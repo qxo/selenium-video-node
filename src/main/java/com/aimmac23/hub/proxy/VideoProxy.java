@@ -1,11 +1,14 @@
 package com.aimmac23.hub.proxy;
 
+import java.util.Map;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 
+import org.apache.commons.lang3.StringUtils;
+import org.apache.http.HttpHost;
 import org.apache.http.HttpResponse;
 import org.apache.http.HttpStatus;
 import org.apache.http.client.HttpClient;
@@ -19,11 +22,9 @@ import org.openqa.grid.selenium.proxy.DefaultRemoteProxy;
 import org.openqa.grid.web.servlet.handler.RequestType;
 import org.openqa.grid.web.servlet.handler.SeleniumBasedRequest;
 import org.openqa.selenium.remote.internal.HttpClientFactory;
-import org.openqa.selenium.remote.server.jmx.ManagedService;
 
 import com.aimmac23.hub.HubVideoRegistry;
 
-@ManagedService(description = "Selenium Grid Hub Video-Capable TestSlot")
 public class VideoProxy extends DefaultRemoteProxy {
 
 	private static final Logger log = Logger.getLogger(VideoProxy.class.getName());
@@ -31,12 +32,15 @@ public class VideoProxy extends DefaultRemoteProxy {
 	private String serviceUrl;
 	boolean isCurrentlyRecording = false;
 	private HttpClient client;
-
+	private HttpHost remoteHost;
+	
 	public VideoProxy(RegistrationRequest request, GridRegistry registry) {
 		super(RegistrationRequestCorrector.correctRegistrationRequest(request), registry);
 		
 		serviceUrl = getRemoteHost() + "/extra/VideoRecordingControlServlet";
 		
+		remoteHost = new HttpHost(getRemoteHost().getHost(),
+				getRemoteHost().getPort());
         HttpClientFactory httpClientFactory = new HttpClientFactory();
         client = httpClientFactory.getHttpClient();
         
@@ -68,11 +72,14 @@ public class VideoProxy extends DefaultRemoteProxy {
 	@Override
 	public void beforeSession(TestSession arg0) {
 		super.beforeSession(arg0);
-				
+		final boolean disabled = isVideoOff(arg0);
+		if(disabled){
+			return;
+		}
 		HttpPost r = new HttpPost(serviceUrl + "?command=start");
 		
         try {
-			HttpResponse response = client.execute(r);
+			HttpResponse response = client.execute(remoteHost, r);
 			if(response.getStatusLine().getStatusCode() != HttpStatus.SC_OK) {
 				log.warning("Could not start video reporting: " + EntityUtils.toString(response.getEntity()));
 				return;
@@ -91,11 +98,28 @@ public class VideoProxy extends DefaultRemoteProxy {
         	r.releaseConnection();
         }
 	}
+
+	private boolean isVideoOff(TestSession testSession) {
+		Map<String, Object> requestedCapabilities = testSession.getRequestedCapabilities();
+		final Object videoDisabled = requestedCapabilities.get("_videoOff");
+		boolean disabled ;
+		if( videoDisabled == null || StringUtils.isBlank(videoDisabled.toString())){
+			disabled = Boolean.getBoolean("seleniumVideoDefaultOff");
+		}else{
+		    disabled =  videoDisabled instanceof Boolean ?  Boolean.TRUE.equals(videoDisabled)
+				: "true".equals(videoDisabled.toString());
+		}
+		return disabled;
+	}
 	
 	@Override
 	public void beforeCommand(TestSession session, HttpServletRequest request,
 			HttpServletResponse response) {
 		super.beforeCommand(session, request, response);
+		final boolean disabled = isVideoOff(session);
+		if(disabled){
+			return;
+		}
 		
 		SeleniumBasedRequest seleniumRequest = SeleniumBasedRequest.createFromRequest(request, getRegistry());
 		
@@ -115,7 +139,10 @@ public class VideoProxy extends DefaultRemoteProxy {
 	public void afterCommand(TestSession session, HttpServletRequest request,
 			HttpServletResponse response) {
 		super.afterCommand(session, request, response);
-		
+		final boolean disabled = isVideoOff(session);
+		if(disabled){
+			return;
+		}		
 		// its a shame we have to extract this again
 		SeleniumBasedRequest seleniumRequest = SeleniumBasedRequest.createFromRequest(request, getRegistry());
 		
@@ -149,7 +176,7 @@ public class VideoProxy extends DefaultRemoteProxy {
 		HttpPost r = new HttpPost(serviceUrl + "?command=stop");
 		
         try {
-			HttpResponse response = client.execute(r);
+			HttpResponse response = client.execute(remoteHost, r);
 			if(response.getStatusLine().getStatusCode() != HttpStatus.SC_OK) {
 				log.warning("Could not stop video reporting: " + EntityUtils.toString(response.getEntity()));
 			}

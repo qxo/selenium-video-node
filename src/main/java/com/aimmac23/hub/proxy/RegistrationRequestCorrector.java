@@ -97,6 +97,7 @@ public final class RegistrationRequestCorrector {
 		for(MutableCapabilities caps : capabilities) {
 			Object maxInstances = caps.getCapability(RegistrationRequest.MAX_INSTANCES);
 			caps.setCapability(RegistrationRequest.MAX_INSTANCES, "1");
+			caps.setCapability(VideoOnCapabilityMatcher.KEY, "true");
 			if(maxInstances != null && !"1".equals(maxInstances)) {
 				log.warning("Reducing " + RegistrationRequest.MAX_INSTANCES + " for browser " + caps.getBrowserName() +
 						" to 1: Video node does not support concurrent sessions");
