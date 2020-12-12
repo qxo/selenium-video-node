@@ -49,11 +49,16 @@ public class VideoRecordController implements Closeable {
 	}
 	
 	public void startRecording() throws Exception {
+		startRecording(null, 0);
+	}
+	
+	public void startRecording(File outputVideo, int targetFramerate) throws Exception {
 		if(currentCallable != null) {
 			throw new IllegalStateException("Video recording currently in progress, cannot record again");
 		}
-		
-		currentCallable = new RecordVideoCallable(targetFramerate, screenshotSource, vpxLibrary, encoderInterface);
+		final int frameRate = targetFramerate > 0 ? targetFramerate : this.targetFramerate;
+		currentCallable = new RecordVideoCallable(frameRate, screenshotSource, vpxLibrary, encoderInterface);
+		currentCallable.setOutputFile(outputVideo);
 		currentFuture = executor.submit(currentCallable);
 	}
 	

@@ -24,6 +24,7 @@ public class RecordVideoCallable implements Callable<File> {
 
 	private LibVPX vpxLibrary;
 	private EncoderInterface encoder;
+	private File outputFile;
 	
 	public RecordVideoCallable(int targetFramerate, ScreenshotSource screenshotSource, LibVPX vpxLibrary, EncoderInterface encoderLibrary) {
 		this.targetFramerate = targetFramerate;
@@ -33,12 +34,17 @@ public class RecordVideoCallable implements Callable<File> {
 		this.targetFramerateSleepTime = (int)((1.0 / targetFramerate) * 1000.0);
 	}
 
+	void setOutputFile(File outputFile) {
+		this.outputFile = outputFile;
+	}
+
 	@Override
 	public File call() throws Exception {
 		int frames = 0;
 
-		File outputFile = File.createTempFile("screencast", ".webm");
-				
+		if (outputFile == null) {
+			outputFile = File.createTempFile("screencast", ".webm");
+		}
 		
 		log.info("Starting new recording at " + targetFramerate + " fps with resolution " 
 		+ screenshotSource.getWidth() + "x" + screenshotSource.getHeight());
