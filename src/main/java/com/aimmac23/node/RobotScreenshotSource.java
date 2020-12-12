@@ -8,12 +8,16 @@ import java.awt.Robot;
 import java.awt.image.BufferedImage;
 import java.awt.image.ColorModel;
 import java.awt.image.DataBufferInt;
+import java.util.logging.Logger;
 
+import com.aimmac23.hub.videostorage.LocalFileVideoStore;
 import com.aimmac23.node.jna.EncoderInterface;
 import com.aimmac23.node.jna.JnaLibraryLoader;
 import com.sun.jna.Pointer;
 
 public class RobotScreenshotSource implements ScreenshotSource {
+
+    private static final Logger log = Logger.getLogger(RobotScreenshotSource.class.getName());
 
 	private Robot robot;
 
@@ -66,7 +70,7 @@ public class RobotScreenshotSource implements ScreenshotSource {
 		int bitDepth = bitAllocations[0] + bitAllocations[1] + bitAllocations[2];
 		
 		if(bitDepth != 24) {
-			throw new IllegalStateException("Display colour depth incorrect (should be 8 bits of red, blue and green). Currently: " 
+			log.warning("Display colour depth incorrect (should be 8 bits of red, blue and green). Currently: " 
 					+ bitAllocations[0] + "-" + bitAllocations[1] + "-" + bitAllocations[2]);
 		}
 	}
